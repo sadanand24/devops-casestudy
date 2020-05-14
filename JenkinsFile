@@ -1,0 +1,50 @@
+node{
+	stage('git checkout'){
+	    git credentialsId: 'gitpwd', url: 'https://github.com/sadanand24/DevopsTest.git'
+	}
+	
+	stage('mvn clean and compile'){
+	    def mavenHome = tool name: 'maven1', type: 'maven'
+	    def mavenCMD = "${mavenHome}/bin/mvn"
+        sh "${mavenCMD} compile"
+	}
+
+	stage('sonar quality check'){
+        def mavenHome = tool name: 'maven1', type: 'maven'
+        def mavenCMD = "${mavenHome}/bin/mvn"
+        sh "${mavenCMD} sonar:sonar"
+    }
+	
+	try{
+	stage('mvn build, test, package with email notification'){
+	    def mavenHome = tool name: 'maven1', type: 'maven'
+        def mavenCMD = "${mavenHome}/bin/mvn"
+        sh "${mavenCMD} package"
+	}
+	}
+	catch(e){
+	    mail bcc: '', body: 'There is a build fail. Please check.', cc: '', from: '', replyTo: '', subject: 'Jenkins build error.', to: 'sadanandsai4@gmail.com'
+	}
+
+	stage('mvn install'){
+	    sh 'mvn install'
+	}
+	
+	stage('docker build'){
+	    sh 'docker build -t sadanand24/cicd:1.0.0 .'
+	}
+	
+	stage('docker push'){
+	    withCredentials([string(credentialsId: 'dockerpwd1', variable: 'dockersecrets')]) {
+        sh "docker login -u sadanand24 -p ${dockersecrets}"
+        }
+	    sh 'docker push sadanand24/cicd:1.0.0'
+	}
+	
+	stage('docker pull'){
+	    sh 'docker pull sadanand24/cicd:1.0.0'
+	}
+	
+	stage('docker run'){
+	    sh 'docker run -p 8888:80 -d sadanand24/cicd:1.0.0'
+	}
